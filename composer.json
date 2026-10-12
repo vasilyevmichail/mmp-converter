@@ -1,0 +1,29 @@
+{
+    "name": "vasilyevmichail/mmp-converter",
+    "description": "Parser and converter for MixMeister Fusion .mmp project files to JSON / CSV / SVG",
+    "type": "library",
+    "keywords": ["mixmeister", "mmp", "riff", "parser", "dj", "playlist", "json", "csv", "svg"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Vasilyev Mikhail",
+            "homepage": "https://github.com/vasilyevmichail"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-mbstring": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Vasilyevmichail\\MmpConverter\\": "src/"
+        }
+    },
+    "bin": ["bin/mmp2json"],
+    "scripts": {
+        "test": "php -l src/MmpParser.php"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

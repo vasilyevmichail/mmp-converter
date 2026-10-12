@@ -1,0 +1,131 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Vasilyevmichail\MmpConverter\Exception\MmpException;
+use Vasilyevmichail\MmpConverter\Exporter\CsvExporter;
+use Vasilyevmichail\MmpConverter\Exporter\JsonExporter;
+use Vasilyevmichail\MmpConverter\Exporter\SvgExporter;
+use Vasilyevmichail\MmpConverter\MmpParser;
+
+// Composer autoload
+$autoloadCandidates = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+$autoloadFound = false;
+foreach ($autoloadCandidates as $file) {
+    if (is_file($file)) {
+        require $file;
+        $autoloadFound = true;
+        break;
+    }
+}
+if (!$autoloadFound) {
+    fwrite(STDERR, "Composer autoload not found. Run 'composer install'.\n");
+    exit(1);
+}
+
+function printUsage(): void
+{
+    fwrite(STDERR, <<<TXT
+Usage: mmp2json <file.mmp> [out] [--format=json|csv|svg] [--delimiter=;] [--no-bom]
+
+Options:
+  --format=json     Output format (default: json)
+  --format=csv      CSV output
+  --format=svg      Visual timeline as SVG
+  --delimiter=;     CSV delimiter (default: ;)
+  --no-bom          Do not write UTF-8 BOM to CSV output
+  --quiet           Suppress summary output
+  -h, --help        Show this help
+
+TXT);
+}
+
+$args = $argv;
+array_shift($args);
+
+$positional = [];
+$format = 'json';
+$delimiter = ';';
+$writeBom = true;
+$quiet = false;
+
+foreach ($args as $arg) {
+    if ($arg === '-h' || $arg === '--help') {
+        printUsage();
+        exit(0);
+    }
+    if ($arg === '--quiet') {
+        $quiet = true;
+        continue;
+    }
+    if ($arg === '--no-bom') {
+        $writeBom = false;
+        continue;
+    }
+    if (str_starts_with($arg, '--format=')) {
+        $format = strtolower(substr($arg, 9));
+        continue;
+    }
+    if (str_starts_with($arg, '--delimiter=')) {
+        $delimiter = substr($arg, 12) ?: ';';
+        continue;
+    }
+    if (str_starts_with($arg, '--')) {
+        fwrite(STDERR, "Unknown option: {$arg}\n");
+        printUsage();
+        exit(1);
+    }
+    $positional[] = $arg;
+}
+
+if (count($positional) < 1) {
+    printUsage();
+    exit(1);
+}
+
+if (!in_array($format, ['json', 'csv', 'svg'], true)) {
+    fwrite(STDERR, "Invalid format: {$format}\n");
+    exit(1);
+}
+
+$mmpPath = $positional[0];
+$outPath = $positional[1] ?? preg_replace('/\.mmp$/i', '', $mmpPath) . '.' . $format;
+
+try {
+    $parser = MmpParser::fromFile($mmpPath);
+
+    $exporter = match ($format) {
+        'json' => new JsonExporter(),
+        'csv'  => new CsvExporter($delimiter, $writeBom),
+        'svg'  => new SvgExporter(),
+    };
+
+    $exporter->exportToFile($parser, $outPath);
+
+    if (!$quiet) {
+        echo "OK: {$outPath} (format={$format})\n";
+        echo "Tracks: " . $parser->getTrackCount() . "\n";
+        foreach ($parser->getTracks() as $t) {
+            printf(
+                "  %d. %s | start=%s | intro=%s | outro=%s | trim=%s..%s | frag=%s\n",
+                $t->trackNumber,
+                $t->fileName,
+                $t->startTimeHms(),
+                $t->introAnchorTimelineHms(),
+                $t->outroAnchorTimelineHms(),
+                $t->trimInHms(),
+                $t->trimOutHms(),
+                $t->fragmentHms()
+            );
+        }
+    }
+
+    exit(0);
+} catch (MmpException $e) {
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    exit(1);
+}
