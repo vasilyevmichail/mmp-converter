@@ -21,7 +21,7 @@ final class SvgExporter implements ExporterInterface
     ];
 
     public function __construct(
-        private readonly int $rowHeight = 70,
+        private readonly int $rowHeight = 90,
         private readonly int $rowGap = 20,
         private readonly int $leftMargin = 120,
         private readonly int $rightMargin = 40,
@@ -71,6 +71,7 @@ final class SvgExporter implements ExporterInterface
             .title { font: bold 16px sans-serif; fill: #222; }
             .track-label { font: 12px sans-serif; fill: #222; }
             .track-name { font: bold 12px sans-serif; fill: #fff; }
+            .track-meta { font: normal 10px sans-serif; fill: #fff; }
             .tick-label { font: 10px sans-serif; fill: #666; }
             .legend { font: 12px sans-serif; fill: #222; }
         </style>' . "\n";
@@ -129,15 +130,24 @@ final class SvgExporter implements ExporterInterface
             }
             $svg .= sprintf(
                 '<text x="%.2f" y="%d" class="track-name">%s</text>' . "\n",
-                $x1 + 6, $y + 20,
+                $x1 + 6, $y + 18,
                 htmlspecialchars($name, ENT_QUOTES | ENT_XML1, 'UTF-8')
             );
 
+            // --- Start / End ---
             $svg .= sprintf(
-                '<text x="%.2f" y="%d" class="track-name" style="font-weight:normal">start=%s  end=%s</text>' . "\n",
-                $x1 + 6, $y + 38,
+                '<text x="%.2f" y="%d" class="track-meta">start=%s  end=%s</text>' . "\n",
+                $x1 + 6, $y + 36,
                 TimeUtil::secToHms($t->startTimeSec),
                 TimeUtil::secToHms($t->startTimeSec + $t->fragmentSec())
+            );
+
+            // --- Trim In / Trim Out на отдельной строке ---
+            $svg .= sprintf(
+                '<text x="%.2f" y="%d" class="track-meta">trim_in=%s  trim_out=%s</text>' . "\n",
+                $x1 + 6, $y + 54,
+                $t->trimInHms(),
+                $t->trimOutHms()
             );
 
             // Intro anchor
